@@ -1,92 +1,64 @@
-#include <SoftwareSerial.h>
+#define ENA 5
+#define IN1 6
+#define IN2 7
 
-// Define software serial object
+#include <SoftwareSerial.h>
 SoftwareSerial BTserial(0, 1); // RX | TX
 
-// Define motor pins
-const int leftMotorForwardPin = 4;
-const int leftMotorBackwardPin = 5;
-const int rightMotorForwardPin = 6;
-const int rightMotorBackwardPin = 7;
-const int rightSpeed = 10;
-const int leftSpeed = 11;
-int speedValue = 3;
+int speedA = 0;
 
 void setup() {
-  // Set motor pins as outputs
-  pinMode(rightSpeed, OUTPUT);
-  pinMode(leftSpeed, OUTPUT);
-  pinMode(leftMotorForwardPin, OUTPUT);
-  pinMode(leftMotorBackwardPin, OUTPUT);
-  pinMode(rightMotorForwardPin, OUTPUT);
-  pinMode(rightMotorBackwardPin, OUTPUT);
-
-  // Begin serial communication with a baud rate of 9600
   Serial.begin(9600);
+  // Set pin modes
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
 
-  // Begin Bluetooth communication with a baud rate of 9600
+  // Initialize Bluetooth serial
   BTserial.begin(9600);
 }
 
-int getSpeed(int x)
-{
-  int ans = (255 / 9) * x;
-  return ans;
-}
-
 void loop() {
-  // Read data from Bluetooth module
-
+  
+// Read data from Bluetooth module
   while (BTserial.available()) {
+
     char command = BTserial.read();
-
-    if (command >= '0' && command <= '9')
-    {
-      speedValue = command - '0';
-      Serial.println(speedValue);
-
-
-      continue;
-    }
-    Serial.println(command);
-
-    // Move forward
     if (command == 'F') {
-      analogWrite(leftSpeed, getSpeed(speedValue));
-      digitalWrite(leftMotorForwardPin, HIGH);
-      digitalWrite(leftMotorBackwardPin, LOW);
-      digitalWrite(rightMotorForwardPin, HIGH);
-      digitalWrite(rightMotorBackwardPin, LOW);
-      analogWrite(rightSpeed, getSpeed(speedValue));
-
+      speedA += 30;
     }
-    // Move backward
     else if (command == 'B') {
-      digitalWrite(leftMotorForwardPin, LOW);
-      digitalWrite(leftMotorBackwardPin, HIGH);
-      digitalWrite(rightMotorForwardPin, LOW);
-      digitalWrite(rightMotorBackwardPin, HIGH);
+      speedA -= 30;
     }
-    // Turn left
-    else if (command == 'L') {
-      digitalWrite(leftMotorForwardPin, LOW);
-      digitalWrite(leftMotorBackwardPin, HIGH);
-      digitalWrite(rightMotorForwardPin, HIGH);
-      digitalWrite(rightMotorBackwardPin, LOW);
-    }
-    // Turn right
-    else if (command == 'R') {
-      digitalWrite(leftMotorForwardPin, HIGH);
-      digitalWrite(leftMotorBackwardPin, LOW);
-      digitalWrite(rightMotorForwardPin, LOW);
-      digitalWrite(rightMotorBackwardPin, HIGH);
-    }
-    // Stop
     else if (command == 'S') {
-      digitalWrite(leftMotorForwardPin, LOW);
-      digitalWrite(leftMotorBackwardPin, LOW);
-      digitalWrite(rightMotorForwardPin, LOW);
-      digitalWrite(rightMotorBackwardPin, LOW);
+
+      while(speedA>0){
+        speedA-=30;
+        delay(250);
+        if(speedA<0)speedA=0;
+
+        analogWrite(ENA, speedA);
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+      }
+
     }
   }
+//
+//   Constrain speed value
+  speedA = constrain(speedA, 0, 255);
+
+//   Set motor speed
+  analogWrite(ENA, speedA);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+
+//  Stop motor if speed is zero
+  if (speedA == 0) {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+  }
+//
+// Wait for motor to respond
+  delay(10);
 }
